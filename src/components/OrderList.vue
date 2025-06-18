@@ -30,6 +30,7 @@
 
     <v-card-text>  
       <v-data-table-virtual
+        :mobile="smAndDown"
         style="height: 100%"
         fixed-header
         hide-default-footer
@@ -131,8 +132,10 @@
 </template>
 
 <script setup>
+import { useDisplay } from 'vuetify'
 import { useOrderStore } from '@/stores/order';
 
+const { smAndDown } = useDisplay()
 const orderStore = useOrderStore();
 
 const emits = defineEmits(['onClose']);

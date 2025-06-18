@@ -6,7 +6,7 @@
           <template v-slot:default="{ isHovering, props }">
             <v-row dense v-bind="props">
               <v-slide-x-transition>
-                <v-col cols="2" v-if="isHovering">
+                <v-col cols="12" sm="2" v-if="isHovering">
                   <v-card 
                     height="90px"
                     @click="showConfigModal = true">
@@ -18,7 +18,7 @@
                 </v-col>
               </v-slide-x-transition>
               <v-col 
-                cols="2" 
+                cols="6" sm="2"
                 v-for="item in groupedProducts"
                 :key="item.product">
                 <v-card 

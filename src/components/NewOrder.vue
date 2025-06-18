@@ -7,8 +7,8 @@
 
     <v-form ref="form" @submit.prevent="createOrder">
       <v-card-text>          
-        <v-row class="mt-2">
-          <v-col cols="3">
+        <v-row class="mt-2 px-2">
+          <v-col cols="12" sm="3">
             <v-text-field 
               label="Senha" 
               variant="solo-filled" 
@@ -19,75 +19,64 @@
           </v-col>
         </v-row>
 
-        <v-table density="compact">
-          <thead>
-            <tr>
-              <th class="text-left pl-0" style="width:70%">
-                Produto
-              </th>
-              <th class="text-left" style="width:26%">
-                Qtd
-              </th>
-              <th style="width:5%" v-if="enableDeleteItemBtn"></th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr v-for="(item, index) in items" :key="index">
-              <td class="pl-0 pb-2">
-                <v-autocomplete
-                  hide-details 
-                  auto-select-first
-                  density="comfortable"
-                  autocomplete="off"
-                  label="Produto"
-                  variant="solo-filled"
-                  :disabled="isLoading.product"
-                  :loading="isLoading.product"
-                  :id="`product-${index}`" 
-                  :items="availableProducts"                 
-                  item-title="name"
-                  item-value="id"
-                  @update:modelValue="val => handleProductSelect(val, index)"
-                  :model-value="item.product"
-                >
-                <template v-slot:item="{ item, props }">
+        <v-data-table-virtual
+          density="compact"
+          :mobile="smAndDown"
+          style="height: 100%;"
+          fixed-header
+          hide-default-footer
+          :headers="headers"
+          :items="items">
+          <template v-slot:item.product="{ item, index }">
+            <v-autocomplete
+              hide-details 
+              auto-select-first
+              density="comfortable"
+              autocomplete="off"
+              label="Produto"
+              variant="solo-filled"
+              :disabled="isLoading.product"
+              :loading="isLoading.product"
+              :id="`product-${index}`" 
+              :items="availableProducts"                 
+              item-title="name"
+              item-value="id"
+              @update:modelValue="val => handleProductSelect(val, index)"
+              :model-value="item.product">
+              <template v-slot:item="{ item, props }">
                 <v-list-item
                   v-bind="props"
                   :disabled="selectedProductIds.includes(item.raw.id) && item.raw.id !== item.product"
                 />
               </template>
-              </v-autocomplete>
-              </td>
+            </v-autocomplete>
+          </template>
 
-              <td class="pb-2">
-                <v-number-input 
-                  hide-details 
-                  density="comfortable"
-                  label="Qtd" 
-                  variant="solo-filled" 
-                  :min="1"
-                  v-model="item.qtd"
-                  @keydown.tab.prevent="handleTab(index)">
-                </v-number-input>
-              </td>
+          <template v-slot:item.qtd="{ item, index }">
+            <v-number-input 
+              hide-details 
+              density="comfortable"
+              label="Qtd" 
+              variant="solo-filled" 
+              :min="1"
+              v-model="item.qtd"
+              @keydown.tab.prevent="handleTab(index)">
+            </v-number-input>
+          </template>
 
-              <td 
-                v-if="enableDeleteItemBtn" 
-                class="text-end pr-0 pb-2">
-                <v-icon-btn                   
-                  color="error" 
-                  icon="mdi-delete" 
-                  variant="text" 
-                  size="large"
-                  @click="removeItem(index)"
-                ></v-icon-btn>
-              </td>
-            </tr>
-          </tbody>
-        </v-table>
+          <template v-slot:item.action="{ item, index }">
+            <v-icon-btn     
+              v-if="enableDeleteItemBtn"              
+              color="error" 
+              icon="mdi-delete" 
+              variant="text" 
+              size="large"
+              @click="removeItem(index)"
+            ></v-icon-btn>
+          </template>
+        </v-data-table-virtual>
 
-        <v-row>
+        <v-row class="px-4">
           <v-col cols="auto">
             <v-btn
               color="warning"
@@ -99,7 +88,7 @@
           </v-col>
         </v-row>   
 
-        <v-row>
+        <v-row class="px-4">
           <v-col cols="9">
             <v-row >
               <v-col cols="auto">
@@ -161,10 +150,12 @@
 
 <script setup>
 import { nextTick, computed } from 'vue';
+import { useDisplay } from 'vuetify'
 import { useOrderStore } from '@/stores/order';
 import { useProductStore } from '@/stores/product';
 import Snack from '@/components/Snack.vue';
 
+const { smAndDown } = useDisplay()
 const orderStore = useOrderStore();
 const productStore = useProductStore();
 
@@ -175,6 +166,30 @@ const priority = ref(false);
 const takeaway = ref(false);
 const onHold = ref(false);
 const senha = ref();
+
+const headers = [
+  {
+    width: '75%',
+    align: 'start',
+    key: 'product',
+    title: 'Produto',
+    sortable: false,
+  },
+  {
+    width: '20%',
+    align: 'start',
+    key: 'qtd',
+    title: 'Qtd',
+    sortable: false,
+  },
+  {
+    width: '5%',
+    align: 'start',
+    key: 'action',
+    sortable: false,
+    title: '',
+  },
+]
 const items = ref([
   {
     product: null,
@@ -209,16 +224,32 @@ function addNewItem() {
   })
 }
 
-function handleTab(index) {
+function focusWhenAvailable(id, retries = 5) {
+  const tryFocus = (attempt = 0) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.focus();
+    } else if (attempt < retries) {
+      setTimeout(() => tryFocus(attempt + 1), 5);
+    }
+  };
+
+  tryFocus();
+}
+
+async function handleTab(index) {
   let el = document.getElementById(`product-${index + 1}`)
 
   if (!el) {
     addNewItem()
 
-    nextTick(() => {
-      el = document.getElementById(`product-${index + 1}`)
-      el.focus();
-    })
+    await nextTick();
+    focusWhenAvailable(`product-${index + 1}`);
+    
+    // nextTick(() => {
+    //   el = document.getElementById(`product-${index + 1}`)
+    //   el.focus();
+    // })
   } else {
     el.focus();
   }

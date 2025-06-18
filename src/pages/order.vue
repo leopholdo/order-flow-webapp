@@ -2,7 +2,7 @@
   <v-container class="fill-height" max-width="900">
     <div class="d-flex align-self-baseline w-100">
       <v-row>
-        <v-col cols="4">
+        <v-col cols="12" sm="4">
           <v-card 
             flat 
             :loading="isLoading.activeOrders"
@@ -16,7 +16,7 @@
           </v-card>
         </v-col>
 
-        <v-col cols="4">
+        <v-col cols="12" sm="4">
           <v-card 
             flat 
             :loading="isLoading.ordersOnHold"
@@ -30,7 +30,7 @@
           </v-card>
         </v-col>
 
-        <v-col cols="4" v-if="averageTime">
+        <v-col cols="12" sm="4" v-if="averageTime">
           <v-card flat>
             <v-card-title class="d-flex align-center pe-2">
               Tempo médio

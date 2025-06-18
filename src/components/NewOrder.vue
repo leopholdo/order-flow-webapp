@@ -17,37 +17,6 @@
               v-model="senha"
             ></v-text-field>
           </v-col>
-
-          <!-- <v-col cols="9">
-            <v-row class="justify-end">
-              <v-col cols="auto">
-                <v-switch 
-                  hide-details
-                  color="success" 
-                  label="Pegar depois" 
-                  v-model="onHold" 
-                ></v-switch>
-              </v-col>
-
-              <v-col cols="auto">
-                <v-switch 
-                  hide-details
-                  color="success" 
-                  label="Para viagem" 
-                  v-model="takeaway" 
-                ></v-switch>
-              </v-col>
-
-              <v-col cols="auto">
-                <v-switch 
-                  hide-details
-                  color="success" 
-                  label="Prioridade" 
-                  v-model="priority" 
-                ></v-switch>
-              </v-col>
-            </v-row>
-          </v-col> -->
         </v-row>
 
         <v-table density="compact">
@@ -64,7 +33,7 @@
           </thead>
 
           <tbody>
-            <tr v-for="(item, index) in items" :key="items.length" >
+            <tr v-for="(item, index) in items" :key="index">
               <td class="pl-0 pb-2">
                 <v-autocomplete
                   hide-details 
@@ -76,11 +45,19 @@
                   :disabled="isLoading.product"
                   :loading="isLoading.product"
                   :id="`product-${index}`" 
-                  :items="availableProducts"
+                  :items="availableProducts"                 
                   item-title="name"
                   item-value="id"
-                  v-model="item.product"
-                ></v-autocomplete>
+                  @update:modelValue="val => handleProductSelect(val, index)"
+                  :model-value="item.product"
+                >
+                <template v-slot:item="{ item, props }">
+                <v-list-item
+                  v-bind="props"
+                  :disabled="selectedProductIds.includes(item.raw.id) && item.raw.id !== item.product"
+                />
+              </template>
+              </v-autocomplete>
               </td>
 
               <td class="pb-2">
@@ -210,6 +187,10 @@ const isLoading = ref({
   btnSubmit: false
 });
 
+const selectedProductIds = computed(() =>
+  items.value.map(i => i.product).filter(Boolean)
+);
+
 const enableDeleteItemBtn = computed(() => {
   return items.value.length > 1
 })
@@ -299,6 +280,15 @@ async function createOrder() {
 
 function removeItem(index) {
   items.value.splice(index, 1);
+}
+
+function handleProductSelect(selectedId, index) {
+  const isAlreadySelected = items.value.some((i, iIndex) => i.product === selectedId && iIndex !== index);
+  if (!isAlreadySelected) {
+    items.value[index].product = selectedId;
+  } else {
+    snackComponent.value.newSnack("Produto já selecionado!", true)  
+  }
 }
 
 onMounted(async () => {

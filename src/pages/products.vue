@@ -12,6 +12,7 @@
           <v-row>
             <v-col cols="12" sm="5">
               <v-text-field 
+                id="name-field"
                 hide-details="auto"          
                 label="Nome" 
                 variant="solo-filled" 
@@ -232,6 +233,8 @@ function editProduct(product) {
   price.value = product.price,
   color.value = product.color,
   isActive.value = product.isActive
+
+  document.getElementById('name-field').focus()
 }
 
 async function updateProduct() {

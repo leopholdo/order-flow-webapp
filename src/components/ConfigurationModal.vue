@@ -16,8 +16,8 @@
 
       <v-divider></v-divider>
 
-      <v-card-title>
-        <p>
+      <v-card-text>
+        <p class="font-weight-bold">
           Tema
         </p>
         <v-radio-group v-model="themeSelected">
@@ -39,32 +39,45 @@
             </template>
           </v-radio>
         </v-radio-group>
-      </v-card-title>
+
+        <!-- <v-divider></v-divider> -->
+        <div 
+          v-if="serverInfo"
+          class="text-overline text-center" 
+          style="font-size: 0.5rem !important;">
+          {{ `${serverInfo.environment} - ${serverInfo.database} - ${serverInfo.dataSource}` }}
+        </div>
+      </v-card-text>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup>
 import { useTheme } from 'vuetify'
+import { useServerStore } from '@/stores/server'
 
 const show = defineModel('show')
 
 const theme = useTheme()
+const serverStore =  useServerStore()
 
 const themeSelected = ref(theme.global.name.value)
+const serverInfo = ref()
 
 watch(themeSelected, (val) => {
   theme.global.name.value = val
   localStorage.setItem('theme', val)
 })
 
-onMounted(() => {
+onMounted(async () => {
   const savedTheme = localStorage.getItem('theme')
 
   if(savedTheme)
     themeSelected.value = savedTheme
   else 
     themeSelected.value = theme.global.name.value
+
+  serverInfo.value = await serverStore.getServerInfo();
 })
 
 </script>

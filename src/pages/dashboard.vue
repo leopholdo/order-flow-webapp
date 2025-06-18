@@ -327,8 +327,6 @@ reports.ordersByHour.forEach(item => {
     data
   }
 
-  console.log(ordersByHour.value);
-
   isLoading.value.cards = false;
 }
 

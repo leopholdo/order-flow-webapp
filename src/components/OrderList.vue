@@ -97,18 +97,16 @@
   </v-card>
 
   <v-snackbar 
-    v-if="activeSnack"
+    v-for="snack in activeSnacks"
+    :key="snack.id"
     color="#4c5255"
-    :timeout="activeSnack.timeout"
-    :timer="activeSnack.error ? 'warning' : 'success'"
-    v-model="activeSnack.show"
-    @mouseover="clearSnackTimeout(activeSnack.timer)"
-    @mouseleave="runTimeout">
+    :timeout="snack.timeout"
+    :timer="snack.error ? 'warning' : 'success'"
+    v-model="snack.show"
+    @mouseover="clearSnackTimeout(snack)"
+    @mouseleave="runTimeout(snack)">
     <template #text>
-      <span v-html="activeSnack.message"></span>
-      <!-- <span>Pedido número </span>
-      <span class="font-weight-bold">{{ activeSnack.order.senha }}</span>
-      <span> {{ props.ordersOnHold ? ' enviado para a cozinha' : ' concluído' }}</span> -->
+      <span v-html="snack.message"></span>
     </template>
 
     <template #actions>
@@ -118,7 +116,7 @@
         size="small"
         prepend-icon="mdi-restore"
         text="Restaurar"
-        @click="restoreOrder"
+        @click="restoreOrder(snack)"
       ></v-btn>
 
       <v-btn 
@@ -126,7 +124,7 @@
         size="small"
         prepend-icon="mdi-close"
         text="Fechar"
-        @click="activeSnack.show = false"
+        @click="closeSnack(snack)"
       ></v-btn>
     </template>
   </v-snackbar>
@@ -156,7 +154,7 @@ const props = defineProps({
 const search = ref();
 
 const listSnack = ref([])
-const activeSnack = ref()
+const activeSnacks = ref([]);
 
 const orders = computed(() => props.ordersOnHold ? orderStore.ordersOnHold : orderStore.orders)
 const headers = [
@@ -212,45 +210,39 @@ async function sendToBoard(order) {
   
   const index = orders.value.indexOf(order)
 
-  // if(!response.ok) {
-  //   activeSnack.value = {
-  //     message: 'Ocorreu um erro erro desconhecido. Por favor, acione um administrador.',
-  //     error: true,
-  //     order: order,
-  //     timeout: 2000,
-  //     show: true
-  //   };
-
-  //   return;
-  // }
-
-  activeSnack.value = {
+  const snack = {
+    id: Date.now() + Math.random(), // unique ID
     message: `Pedido número <b>${order.senha}</b> enviado para a cozinha.`,
-    order: order,
+    order,
+    index,
     timeout: 3000,
-    show: true
+    show: true,
+    timer: null
   };
+
+  activeSnacks.value.push(snack)
 
   orders.value.splice(index, 1);
     
-  runTimeout();
+  runTimeout(snack);
 }
 
-function runTimeout() {
-  activeSnack.value.timer = setTimeout(() => {
-    if(props.ordersOnHold) {
-      orderStore.sendToBoard(activeSnack.value.order.senha);
+function runTimeout(snack) {
+  snack.timer = setTimeout(() => {
+    if (props.ordersOnHold) {
+      orderStore.sendToBoard(snack.order.id);
+    } else {
+      orderStore.completeOrder(snack.order.id);
     }
-    else {
-      orderStore.completeOrder(activeSnack.value.order.senha);
-    }
-    activeSnack.value = null;
-  }, activeSnack.value.timeout)
+    removeSnack(snack.id);
+  }, snack.timeout);
 }
 
-function clearSnackTimeout(timer) {
-  console.log(timer);
-  clearTimeout(timer)
+function clearSnackTimeout(snack) {
+  if (snack?.timer) {
+    clearTimeout(snack.timer)
+    snack.timer = null
+  }
 }
 
 function queueRemoveOrder(order) {
@@ -258,29 +250,44 @@ function queueRemoveOrder(order) {
   
   const index = orders.value.indexOf(order)
 
-  activeSnack.value = {
+  const snack = {
+    id: Date.now() + Math.random(), // unique ID
     message: `Pedido número <b>${order.senha}</b> concluído.`,
-    order: order,
-    index: index,
+    order,
+    index,
     timeout: 3000,
-    show: true
+    show: true,
+    timer: null
   };
+
+  activeSnacks.value.push(snack)
 
   // remove o pedido da lista (sem mandar pro backend)
   orders.value.splice(index, 1);
 
-  runTimeout();
+  runTimeout(snack);
 }
 
-function restoreOrder() {
+function restoreOrder(snack) {
   // remove o timer que envia a requisição de remoção pro backend
-  clearSnackTimeout(activeSnack.value.timeout)
+  clearSnackTimeout(snack)
 
   // restore the order in the main list 
-  orders.value.splice(activeSnack.value.index, 0, activeSnack.value.order);
+  orders.value.splice(snack.index, 0, snack.order);
 
   // limpa o snack
-  activeSnack.value = null;
+  removeSnack(snack.id)
+}
+
+function removeSnack(id) {
+  const i = activeSnacks.value.findIndex(s => s.id === id);
+  if (i !== -1) activeSnacks.value.splice(i, 1);
+}
+
+
+function closeSnack(snack) {
+  clearSnackTimeout(snack)
+  removeSnack(snack.id)
 }
 </script>
 

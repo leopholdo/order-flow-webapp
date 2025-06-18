@@ -7,6 +7,7 @@ export const useOrderStore = defineStore('order', () => {
   const ordersOnHold = ref([])
   const averageTime = ref("")
   const newOrderReceived = ref(false)
+  const newOrderReceivedList = ref([])
   const hubConnection = ref(false)
   const getTimeWhenOrderCompleted = ref(false)
 
@@ -36,8 +37,6 @@ export const useOrderStore = defineStore('order', () => {
 
     ordersOnHold.value = data;
 
-    console.log(`getOrdersOnHold: ${ordersOnHold.value.length}`);
-
     return data
   }
 
@@ -62,8 +61,8 @@ export const useOrderStore = defineStore('order', () => {
     })
   }
 
-  const sendToBoard = async (senha) => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/orders/sendToBoard?key=${senha}`, {
+  const sendToBoard = async (id) => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/orders/sendToBoard?id=${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,8 +72,8 @@ export const useOrderStore = defineStore('order', () => {
     return response;
   }
 
-  const completeOrder = async (senha) => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/orders/complete?key=${senha}`, {
+  const completeOrder = async (id) => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/orders/complete?id=${id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,15 +99,15 @@ export const useOrderStore = defineStore('order', () => {
         newOrderReceived.value = false;
       }, 100); 
 
-      // Find the index after the last priority:true order
-      const insertIndex = orders.value.findIndex(o => !o.priority);
-      if (insertIndex === -1) {
-        // All orders are priority OR list is empty → push to end
-        orders.value.push(order);
-      } else {
-        // Insert at the right position
-        orders.value.splice(insertIndex, 0, order);
-      }
+      newOrderReceivedList.value.push(order)
+      setTimeout(() => {
+        const index = newOrderReceivedList.value.indexOf(order);
+        if (index !== -1) {
+          newOrderReceivedList.value.splice(index, 1);
+        }
+      }, 10000);
+
+      orders.value.push(order);
     })
 
     hubConnection.value.on('OrderReceivedOnHold', (order) => {      
@@ -128,20 +127,19 @@ export const useOrderStore = defineStore('order', () => {
         newOrderReceived.value = false;
       }, 100); 
 
-      // Find the index after the last priority:true order
-      const insertIndex = orders.value.findIndex(o => !o.priority);
-      if (insertIndex === -1) {
-        // All orders are priority OR list is empty → push to end
-        orders.value.push(order);
-      } else {
-        // Insert at the right position
-        orders.value.splice(insertIndex, 0, order);
-      }
+      newOrderReceivedList.value.push(order)
+      setTimeout(() => {
+        const index = newOrderReceivedList.value.indexOf(order);
+        if (index !== -1) {
+          newOrderReceivedList.value.splice(index, 1);
+        }
+      }, 10000);
+
+      orders.value.push(order);
     })
 
-    hubConnection.value.on('OrderCompleted', (key) => {
-      console.log('object');
-      const index = orders.value.findIndex(o => o.senha == key);
+    hubConnection.value.on('OrderCompleted', (id) => {
+      const index = orders.value.findIndex(o => o.id == id);
       if(index === -1) return;
 
       orders.value.splice(index, 1);
@@ -171,6 +169,7 @@ export const useOrderStore = defineStore('order', () => {
     completeOrder, 
     connectToHub,
     newOrderReceived,
-    getTimeWhenOrderCompleted
+    getTimeWhenOrderCompleted,
+    newOrderReceivedList
   }
 })

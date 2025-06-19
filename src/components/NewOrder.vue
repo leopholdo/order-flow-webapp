@@ -2,122 +2,98 @@
   <v-card flat>
     <v-card-title class="d-flex align-center pe-2">
       Novo pedido
+
+      <v-menu transition="scale-transition">
+        <template v-slot:activator="{ props }">
+          <v-icon-btn
+            class="ml-auto" 
+            variant="plain"
+            icon="mdi-cog"
+            v-bind="props"
+          ></v-icon-btn>
+        </template>
+
+        <div>
+          <v-list 
+            density="compact"
+            v-model:selected="visualizationMode"
+            @update:selected="onChangeVisualizationMode">
+            <v-list-subheader>
+              Configurar visualização
+            </v-list-subheader>
+              
+            <v-list-item
+              prepend-icon="mdi-list-box"
+              title="Lista"
+              value="list"
+            ></v-list-item>
+
+            <v-list-item
+              prepend-icon="mdi-view-grid"
+              title="Blocos"
+              value="block"
+            ></v-list-item>
+          </v-list>
+        </div>
+      </v-menu>
     </v-card-title>
+
     <v-divider></v-divider>
 
     <v-form ref="form" @submit.prevent="createOrder">
-      <v-card-text>          
-        <v-row class="mt-2 px-2">
+      <v-card-text>     
+        <NewOrderProductsList
+          v-if="visualizationMode.includes('list')"
+          :isLoading="isLoading"
+          :availableProducts="availableProducts"
+          v-model:items="items"
+        ></NewOrderProductsList>
+
+        <NewOrderProductsBlock
+          v-else
+          ref="productsBlockRef"
+          :availableProducts="availableProducts"
+          v-model:items="items"
+        ></NewOrderProductsBlock>
+
+        <v-row>
           <v-col cols="12" sm="3">
-            <v-text-field 
+            <v-text-field
+              hide-details 
               label="Senha" 
               variant="solo-filled" 
               autocomplete="off"
-              :rules="[rules.required]"
-              v-model="senha"
-            ></v-text-field>
-          </v-col>
-        </v-row>
-
-        <v-data-table-virtual
-          density="compact"
-          :mobile="smAndDown"
-          style="height: 100%;"
-          fixed-header
-          hide-default-footer
-          :headers="headers"
-          :items="items">
-          <template v-slot:item.product="{ item, index }">
-            <v-autocomplete
-              hide-details 
-              auto-select-first
-              density="comfortable"
-              autocomplete="off"
-              label="Produto"
-              variant="solo-filled"
-              :disabled="isLoading.product"
-              :loading="isLoading.product"
-              :id="`product-${index}`" 
-              :items="availableProducts"                 
-              item-title="name"
-              item-value="id"
-              @update:modelValue="val => handleProductSelect(val, index)"
-              :model-value="item.product">
-              <template v-slot:item="{ item, props }">
-                <v-list-item
-                  v-bind="props"
-                  :disabled="selectedProductIds.includes(item.raw.id) && item.raw.id !== item.product"
-                />
-              </template>
-            </v-autocomplete>
-          </template>
-
-          <template v-slot:item.qtd="{ item, index }">
-            <v-number-input 
-              hide-details 
-              density="comfortable"
-              label="Qtd" 
-              variant="solo-filled" 
+              type="number"
               :min="1"
-              v-model="item.qtd"
-              @keydown.tab.prevent="handleTab(index)">
-            </v-number-input>
-          </template>
-
-          <template v-slot:item.action="{ item, index }">
-            <v-icon-btn     
-              v-if="enableDeleteItemBtn"              
-              color="error" 
-              icon="mdi-delete" 
-              variant="text" 
-              size="large"
-              @click="removeItem(index)"
-            ></v-icon-btn>
-          </template>
-        </v-data-table-virtual>
-
-        <v-row class="px-4">
-          <v-col cols="auto">
-            <v-btn
-              color="warning"
-              variant="tonal"
-              size="small"
-              @click="addNewItem">
-              + Novo item
-            </v-btn>
+              :rules="[rules.required]"
+              v-model="senha">
+            </v-text-field>
           </v-col>
-        </v-row>   
+          <v-col cols="auto" class="ml-auto">
+            <v-switch 
+              hide-details
+              color="success" 
+              label="Pegar depois" 
+              v-model="onHold" 
+            ></v-switch>
+          </v-col>
 
-        <v-row class="px-4">
-          <v-col cols="9">
-            <v-row >
-              <v-col cols="auto">
-                <v-switch 
-                  hide-details
-                  color="success" 
-                  label="Pegar depois" 
-                  v-model="onHold" 
-                ></v-switch>
-              </v-col>
+          <v-col cols="auto">
+            <v-switch 
+              hide-details
+              color="success" 
+              label="Para viagem" 
+              v-model="takeaway" 
+            ></v-switch>
+          </v-col>
 
-              <v-col cols="auto">
-                <v-switch 
-                  hide-details
-                  color="success" 
-                  label="Para viagem" 
-                  v-model="takeaway" 
-                ></v-switch>
-              </v-col>
-
-              <v-col cols="auto">
-                <v-switch 
-                  hide-details
-                  color="success" 
-                  label="Prioridade" 
-                  v-model="priority" 
-                ></v-switch>
-              </v-col>
-            </v-row>
+          <v-col cols="auto">
+            <v-switch 
+              hide-details
+              color="success" 
+              label="Prioridade" 
+              v-model="priority" 
+            ></v-switch>
           </v-col>
         </v-row>
       </v-card-text>
@@ -149,13 +125,13 @@
 </template>
 
 <script setup>
-import { nextTick, computed } from 'vue';
-import { useDisplay } from 'vuetify'
+import { nextTick } from 'vue';
 import { useOrderStore } from '@/stores/order';
 import { useProductStore } from '@/stores/product';
+import NewOrderProductsList from './NewOrderProductsList.vue';
+import NewOrderProductsBlock from './NewOrderProductsBlock.vue';
 import Snack from '@/components/Snack.vue';
 
-const { smAndDown } = useDisplay()
 const orderStore = useOrderStore();
 const productStore = useProductStore();
 
@@ -166,49 +142,15 @@ const priority = ref(false);
 const takeaway = ref(false);
 const onHold = ref(false);
 const senha = ref();
+const visualizationMode = ref(['block'])
+const productsBlockRef = ref()
 
-const headers = [
-  {
-    width: '75%',
-    align: 'start',
-    key: 'product',
-    title: 'Produto',
-    sortable: false,
-  },
-  {
-    width: '20%',
-    align: 'start',
-    key: 'qtd',
-    title: 'Qtd',
-    sortable: false,
-  },
-  {
-    width: '5%',
-    align: 'start',
-    key: 'action',
-    sortable: false,
-    title: '',
-  },
-]
-const items = ref([
-  {
-    product: null,
-    qtd: 1
-  }
-])
+const items = ref([])
 
 const isLoading = ref({
   product: true,
   btnSubmit: false
 });
-
-const selectedProductIds = computed(() =>
-  items.value.map(i => i.product).filter(Boolean)
-);
-
-const enableDeleteItemBtn = computed(() => {
-  return items.value.length > 1
-})
 
 const rules = {
   required(value) {
@@ -217,51 +159,23 @@ const rules = {
   }
 }
 
-function addNewItem() {
-  items.value.push({
-    product: null,
-    qtd: 1
-  })
-}
-
-function focusWhenAvailable(id, retries = 5) {
-  const tryFocus = (attempt = 0) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.focus();
-    } else if (attempt < retries) {
-      setTimeout(() => tryFocus(attempt + 1), 5);
-    }
-  };
-
-  tryFocus();
-}
-
-async function handleTab(index) {
-  let el = document.getElementById(`product-${index + 1}`)
-
-  if (!el) {
-    addNewItem()
-
-    await nextTick();
-    focusWhenAvailable(`product-${index + 1}`);
-    
-    // nextTick(() => {
-    //   el = document.getElementById(`product-${index + 1}`)
-    //   el.focus();
-    // })
-  } else {
-    el.focus();
-  }
+function onChangeVisualizationMode(val) {
+  localStorage.setItem('visualizationMode', val[0])
 }
 
 async function clearOrder() {
   await form.value.reset();
 
-  items.value = [{
-    name: null,
-    qtd: 1
-  }]
+  items.value = []
+  
+  if(productsBlockRef.value) {
+    productsBlockRef.value.onClear()
+  }else {
+    items.value = [{
+      name: null,
+      qtd: 1
+    }]
+  }
 
   onHold.value = false;
   takeaway.value = false;
@@ -309,27 +223,19 @@ async function createOrder() {
     })
 }
 
-function removeItem(index) {
-  items.value.splice(index, 1);
-}
-
-function handleProductSelect(selectedId, index) {
-  const isAlreadySelected = items.value.some((i, iIndex) => i.product === selectedId && iIndex !== index);
-  if (!isAlreadySelected) {
-    items.value[index].product = selectedId;
-  } else {
-    snackComponent.value.newSnack("Produto já selecionado!", true)  
-  }
-}
-
 onMounted(async () => {
   availableProducts.value = await productStore.getProducts();
   isLoading.value.product = false;
+
+  const visualizationModeStored = localStorage.getItem('visualizationMode')
+  if(visualizationModeStored) {
+    visualizationMode.value = [visualizationModeStored]
+  } 
 })
 </script>
 
 <style scoped>
-.v-table >>> div > table {
-  border-spacing: 0 0.5rem;
+:deep(.v-data-table-headers--mobile) {
+  display: none !important;
 }
 </style>
